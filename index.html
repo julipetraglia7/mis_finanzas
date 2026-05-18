@@ -618,13 +618,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 //     { "rules": { "users": { "$uid": { ".read": "$uid === auth.uid", ".write": "$uid === auth.uid" } } } }
 // ═══════════════════════════════════════════════════════════════
 const FIREBASE_CONFIG = {
-  apiKey: "PEGAR_AQUI",
-  authDomain: "PEGAR_AQUI",
-  databaseURL: "PEGAR_AQUI",
-  projectId: "PEGAR_AQUI",
-  storageBucket: "PEGAR_AQUI",
-  messagingSenderId: "PEGAR_AQUI",
-  appId: "PEGAR_AQUI"
+  apiKey: "AIzaSyD_Is-oPLWQeX_65TZrbF1Sr-PU20Iy7vw",
+  authDomain: "mis-finanzas-4ef11.firebaseapp.com",
+  databaseURL: "https://mis-finanzas-4ef11-default-rtdb.firebaseio.com",
+  projectId: "mis-finanzas-4ef11",
+  storageBucket: "mis-finanzas-4ef11.firebasestorage.app",
+  messagingSenderId: "256618973830",
+  appId: "1:256618973830:web:af120600eed1ad1fd81f07"
 };
 
 const FIREBASE_LISTO = FIREBASE_CONFIG.apiKey !== 'PEGAR_AQUI';
@@ -1176,8 +1176,18 @@ function usarModoLocal(){
 }
 
 // Arranque
+let authChecked=false;
 if(FIREBASE_LISTO&&fbAuth){
+  // Timeout de seguridad: si Firebase no responde en 4s, mostrar login igual
+  setTimeout(()=>{
+    if(!authChecked){
+      console.warn('Firebase Auth no respondió a tiempo, mostrando login');
+      $('appLoading').classList.add('hidden');
+      $('loginScreen').classList.remove('hidden');
+    }
+  },4000);
   fbAuth.onAuthStateChanged(async user=>{
+    authChecked=true;
     if(user){
       currentUser=user;
       $('appLoading').classList.remove('hidden');
