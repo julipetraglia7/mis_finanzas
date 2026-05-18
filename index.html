@@ -31,7 +31,7 @@
 body.dark{
   --bg:#0F0A1A;--bg2:#1A1228;--card:#1E1528;
   --text:#FAF7FF;--text2:#B09EC0;--text3:#7C6A92;
-  --accent:#C084FC;--border:#2D2240;
+  --border:#2D2240;
   --shadow:0 2px 20px rgba(0,0,0,0.4);
   --shadow-lg:0 8px 40px rgba(0,0,0,0.6);
 }
@@ -461,10 +461,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         </div>
         <div class="card" style="margin-top:16px">
           <div class="card-title">🎨 Apariencia</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 12px">
             <span style="font-size:13px;color:var(--text2)">🌙 Modo oscuro</span>
             <button class="toggle" id="toggleDark" onclick="toggleDark()"></button>
           </div>
+          <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px">Paleta de colores</div>
+          <div id="themePicker" style="display:flex;gap:10px;flex-wrap:wrap;"></div>
         </div>
       </div>
       <div class="card" style="padding:0">
@@ -944,6 +946,7 @@ function renderCategorias(){
 function renderConfig(){
   $('activeMonth').value=state.activeMonth;
   const td=$('toggleDark');if(td)td.classList.toggle('on',!!state.darkMode);
+  renderThemePicker();
   $('catManageList').innerHTML=state.categories.length?state.categories.map(c=>`
     <div class="manage-row">
       <div class="manage-icon" style="background:${c.color}22">${c.icon}</div>
@@ -975,9 +978,39 @@ function showScreen(id,el,type){
   renderAll();window.scrollTo(0,0);
 }
 function setFilter(f){activeFilter=f;renderGastos();}
+const THEMES={
+  violet:{name:'Violeta',grad:'linear-gradient(135deg,#5B21B6,#9333EA,#C026D3)',accent:'#7B3FA8',bg:'#FAF7FF',bg2:'#F0EAFA',border:'#E8DEFF',preview:'#9333EA'},
+  pink:{name:'Rosa',grad:'linear-gradient(135deg,#BE185D,#EC4899,#F472B6)',accent:'#BE185D',bg:'#FFF7FB',bg2:'#FCE7F3',border:'#FBCFE8',preview:'#EC4899'},
+  blue:{name:'Azul',grad:'linear-gradient(135deg,#1E40AF,#3B82F6,#60A5FA)',accent:'#2563EB',bg:'#F5F8FF',bg2:'#DBEAFE',border:'#BFDBFE',preview:'#3B82F6'},
+  teal:{name:'Turquesa',grad:'linear-gradient(135deg,#115E59,#14B8A6,#5EEAD4)',accent:'#0F766E',bg:'#F0FDFA',bg2:'#CCFBF1',border:'#99F6E4',preview:'#14B8A6'},
+  orange:{name:'Naranja',grad:'linear-gradient(135deg,#9A3412,#EA580C,#FB923C)',accent:'#C2410C',bg:'#FFFAF5',bg2:'#FFEDD5',border:'#FED7AA',preview:'#EA580C'},
+  slate:{name:'Grafito',grad:'linear-gradient(135deg,#1E293B,#475569,#64748B)',accent:'#334155',bg:'#F8FAFC',bg2:'#E2E8F0',border:'#CBD5E1',preview:'#475569'}
+};
+
+function applyTheme(){
+  const t=THEMES[state.theme]||THEMES.violet;
+  const r=document.documentElement.style;
+  r.setProperty('--grad',t.grad);
+  r.setProperty('--accent',t.accent);
+  if(!state.darkMode){
+    r.setProperty('--bg',t.bg);
+    r.setProperty('--bg2',t.bg2);
+    r.setProperty('--border',t.border);
+  } else {
+    r.removeProperty('--bg');r.removeProperty('--bg2');r.removeProperty('--border');
+  }
+  renderThemePicker();
+}
+function setTheme(id){state.theme=id;applyTheme();save();}
+function renderThemePicker(){
+  const el=$('themePicker');if(!el)return;
+  el.innerHTML=Object.entries(THEMES).map(([id,t])=>`<button onclick="setTheme('${id}')" title="${t.name}" style="width:34px;height:34px;border-radius:50%;border:${state.theme===id?'3px solid var(--text)':'2px solid var(--border)'};background:${t.preview};cursor:pointer;padding:0;transition:transform 0.15s;${state.theme===id?'transform:scale(1.12);':''}"></button>`).join('');
+}
+
 function toggleDark(){
   state.darkMode=!state.darkMode;
   applyDarkMode();
+  applyTheme();
   save();
 }
 function applyDarkMode(){
@@ -1172,6 +1205,7 @@ async function handleScan(input){
 // AUTH & INIT
 function mostrarApp(){
   applyDarkMode();
+  applyTheme();
   $('appLoading').classList.add('hidden');
   $('loginScreen').classList.add('hidden');
   if(!state.done){$('onboarding').classList.remove('hidden');}
