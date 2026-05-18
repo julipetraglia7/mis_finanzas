@@ -1114,8 +1114,11 @@ function saveExpense(){
   if(!amt||!desc){alert('Completá el monto y la descripción');return;}
   let cuota=null;
   if(cuotasMode){const actual=parseInt($('inputCuotaActual').value)||1,total=parseInt($('inputCuotaTotal').value)||1,monto=parseFloat($('inputCuotaMonto').value)||amt;cuota={actual,total,monto};}
-  if(editingId!==null){const e=state.expenses.find(x=>x.id===editingId);if(e){e.amt=amt;e.desc=desc;e.cat=selectedCatId;e.medio=selectedMedioId;e.paid=selectedStatus==='paid';e.cuota=cuota;}}
-  else state.expenses.push({id:state.nextId++,desc,amt,cat:selectedCatId,medio:selectedMedioId,paid:selectedStatus==='paid',date:new Date().toISOString().split('T')[0],cuota});
+  if(editingId!==null){
+    const e=state.expenses.find(x=>x.id===editingId);
+    if(e){e.amt=amt;e.desc=desc;e.cat=selectedCatId;e.medio=selectedMedioId;e.paid=selectedStatus==='paid';e.cuota=cuota;}
+    else{alert('No se encontró el gasto a editar. Cerrá y volvé a abrir.');return;}
+  } else state.expenses.push({id:state.nextId++,desc,amt,cat:selectedCatId,medio:selectedMedioId,paid:selectedStatus==='paid',date:new Date().toISOString().split('T')[0],cuota});
   save();closeModal();renderAll();
 }
 
@@ -1172,8 +1175,14 @@ function saveIncomeEntry(){
   const month=date.slice(0,7);
   if(!state.incomeEntries[month])state.incomeEntries[month]=[];
   if(editingIncomeId!==null){
-    const idx=state.incomeEntries[month].findIndex(x=>x.id===editingIncomeId);
-    if(idx>=0)state.incomeEntries[month][idx]={id:editingIncomeId,desc,amt,date,type:selectedIncomeType};
+    // Buscar en cualquier mes (puede haber cambiado de mes al editar)
+    let found=false;
+    Object.keys(state.incomeEntries).forEach(m=>{
+      const idx=state.incomeEntries[m].findIndex(x=>x.id===editingIncomeId);
+      if(idx>=0){state.incomeEntries[m].splice(idx,1);found=true;}
+    });
+    if(!found){alert('No se encontró el ingreso a editar. Cerrá y volvé a abrir.');return;}
+    state.incomeEntries[month].push({id:editingIncomeId,desc,amt,date,type:selectedIncomeType});
   } else {
     state.incomeEntries[month].push({id:state.nextId++,desc,amt,date,type:selectedIncomeType});
   }
@@ -1189,7 +1198,7 @@ function openIncomeDetail(id){
   $('modalIncomeDetail').classList.add('open');
 }
 function closeIncomeDetail(){$('modalIncomeDetail').classList.remove('open');incomeDetailId=null;}
-function openEditIncome(){closeIncomeDetail();openIncomeEntryModal(incomeDetailId);}
+function openEditIncome(){const id=incomeDetailId;closeIncomeDetail();openIncomeEntryModal(id);}
 function deleteIncome(){
   if(!confirm('¿Eliminar este ingreso?'))return;
   Object.keys(state.incomeEntries).forEach(m=>{state.incomeEntries[m]=state.incomeEntries[m].filter(x=>x.id!==incomeDetailId);});
@@ -1251,8 +1260,9 @@ async function handleScan(input){
   sa.innerHTML='<div class="scan-icon">📸</div><div class="scan-text">Escanear otro ticket</div>';
 }
 
-['modalAdd','modalDetail','modalCat','modalMedio','modalIncome','modalIncomeDetail'].forEach(id=>{
-  $(id).addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
+const _modalClosers={modalAdd:closeModal,modalDetail:closeDetail,modalCat:closeCatModal,modalMedio:closeMedioModal,modalIncome:closeIncomeModal,modalIncomeDetail:closeIncomeDetail};
+Object.entries(_modalClosers).forEach(([id,fn])=>{
+  $(id).addEventListener('click',function(e){if(e.target===this)fn();});
 });
 
 // AUTH & INIT
