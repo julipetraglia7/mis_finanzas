@@ -158,6 +158,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 /* DESKTOP */
 @media(min-width:768px){
+  .section-title.flush{padding:0;}
   body{display:flex;}
   .mobile-header,.mobile-nav,.mobile-fab,.mobile-fab-inc{display:none!important;}
   .sidebar{width:var(--sidebar);min-height:100vh;background:var(--grad);display:flex;flex-direction:column;padding:32px 0;position:fixed;top:0;left:0;z-index:50;}
@@ -265,7 +266,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   .modal-handle{width:36px;height:4px;background:var(--border);border-radius:99px;margin:0 auto 20px;}
   .modal-title{font-family:'DM Serif Display',serif;font-size:22px;color:var(--text);margin-bottom:20px;}
   .screen{padding:0 0 8px;}
-  .income-summary-card{margin:0 16px 12px;border-radius:var(--r);}
+  .income-summary-card{margin:0 16px 12px;border-radius:var(--r);background:linear-gradient(135deg,#1B4332,#2D6A4F);}
+  .section-title{padding:18px 16px 10px;}
 }
 </style>
 </head>
@@ -396,11 +398,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div id="alertHome" style="margin-top:12px"></div>
     <div class="two-col" style="margin-top:16px">
       <div>
-        <div class="section-title" style="padding-left:0">Últimos gastos</div>
+        <div class="section-title flush">Últimos gastos</div>
         <div class="card" style="padding:0"><div id="recentList"></div></div>
       </div>
       <div>
-        <div class="section-title" style="padding-left:0">Gastos por categoría</div>
+        <div class="section-title flush">Gastos por categoría</div>
         <div class="card" style="padding:16px">
           <div class="donut-wrap">
             <canvas id="donutHome"></canvas>
@@ -411,26 +413,36 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       </div>
     </div>
     <!-- Medios de pago summary -->
-    <div class="section-title" style="padding-left:0;margin-top:8px">Por medio de pago</div>
+    <div class="section-title flush" style="margin-top:8px">Por medio de pago</div>
     <div class="card" style="padding:0"><div id="mediosSummary"></div></div>
   </div>
 
   <!-- GASTOS -->
   <div id="screen-gastos" class="screen">
-    <div class="section-title" style="padding-left:0">Gastos del mes</div>
+    <div class="section-title flush">Gastos del mes</div>
     <div class="filters" id="filterBtns"></div>
     <div class="card" style="padding:0"><div id="allExpensesList"></div></div>
   </div>
 
   <!-- INGRESOS -->
   <div id="screen-ingresos" class="screen">
-    <div class="section-title" style="padding-left:0">Ingresos de <span id="incomeMonthLabel">—</span></div>
+    <div class="section-title flush">Ingresos de <span id="incomeMonthLabel">—</span></div>
     <div class="income-summary-card card" style="padding:20px;margin-bottom:12px">
       <div style="font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total ingresos del mes</div>
       <div class="income-total" id="incomeTotalBig">$0</div>
       <div class="income-sub" id="incomeSubLabel">—</div>
     </div>
-    <div class="card" style="padding:0"><div id="incomeList"></div></div>
+    <div class="two-col">
+      <div class="card" id="incomeDonutCard" style="padding:16px;display:none">
+        <div class="card-title">Por tipo de ingreso</div>
+        <div class="donut-wrap">
+          <canvas id="incomeDonut"></canvas>
+          <div class="donut-center"><div class="donut-center-val" id="incomeDonutTotal">—</div><div class="donut-center-lbl">Total</div></div>
+        </div>
+        <div id="incomeDonutLegend" style="display:flex;flex-direction:column;gap:5px;padding:0 4px;"></div>
+      </div>
+      <div class="card" style="padding:0"><div id="incomeList"></div></div>
+    </div>
   </div>
 
   <!-- CATEGORIAS -->
@@ -589,6 +601,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="modal-title" id="incomeModalTitle">Nuevo ingreso</div>
     <div class="form-group"><label class="form-label">Monto ($)</label><input class="form-input big" type="number" id="incomeAmt" placeholder="0" inputmode="decimal"></div>
     <div class="form-group"><label class="form-label">Descripción</label><input class="form-input" type="text" id="incomeDesc" placeholder="Ej: Sueldo, freelance, viáticos..."></div>
+    <div class="form-group"><label class="form-label">Tipo de ingreso</label><div id="incomeTypeSelect" style="display:flex;gap:8px;flex-wrap:wrap;"></div></div>
     <div class="form-group"><label class="form-label">Fecha</label><input class="form-input" type="date" id="incomeDate"></div>
     <button class="btn-primary green-btn" id="incomeBtn" onclick="saveIncomeEntry()">Guardar ingreso</button>
     <button class="btn-secondary" onclick="closeIncomeModal()">Cancelar</button>
@@ -696,6 +709,14 @@ let state={
 const COLORS=['#8B5CF6','#C084FC','#A855F7','#E879F9','#F472B6','#7C3AED','#D946EF','#BE185D','#9CA3AF','#A78BFA','#60A5FA','#34D399','#FBBF24','#F87171','#FB923C'];
 const EMOJIS=['💳','🏠','⛽','🛡️','📺','📚','🖨️','⚡','🏢','📦','🛒','💊','🐾','🍔','✈️','🎮','👗','💄','🏋️','🎵','🎬','🍷','☕','🚗','🚌','💰','🏦','📱','💻','🔧'];
 const MEDIO_EMOJIS=['💳','🏦','💵','🔵','🟣','🟢','⚡','🌐','📲','💸'];
+const INCOME_TYPES=[
+  {id:'fijo',label:'Fijo',icon:'💼',color:'#1B4332'},
+  {id:'mensual',label:'Mensual',icon:'🔄',color:'#2D6A4F'},
+  {id:'variable',label:'Variable',icon:'📈',color:'#52B788'},
+  {id:'unica',label:'Única vez',icon:'🎁',color:'#95D5B2'}
+];
+const getIncomeType=id=>INCOME_TYPES.find(t=>t.id===id)||INCOME_TYPES[2];
+let selectedIncomeType='variable';
 
 let selectedCatId=null,selectedMedioId=null,selectedStatus='paid',editingId=null,detailId=null;
 let activeFilter='all',cuotasMode=false,editingCatId=null,editingMedioId=null,selectedColor=COLORS[0];
@@ -814,10 +835,13 @@ function autoGenerateCuotas(){
 function drawD(id,sz,entries,tot){
   const c=$(id);if(!c)return;c.width=sz;c.height=sz;
   const ctx=c.getContext('2d'),cx=sz/2,cy=sz/2,r=sz*.44,ir=sz*.28;
+  const cs=getComputedStyle(document.body);
+  const cardBg=cs.getPropertyValue('--card').trim()||'#fff';
+  const bg2=cs.getPropertyValue('--bg2').trim()||'#F0EAFA';
   ctx.clearRect(0,0,sz,sz);
-  if(!entries.length||!tot){ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle='#F0EAFA';ctx.fill();ctx.beginPath();ctx.arc(cx,cy,ir,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();return;}
+  if(!entries.length||!tot){ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle=bg2;ctx.fill();ctx.beginPath();ctx.arc(cx,cy,ir,0,Math.PI*2);ctx.fillStyle=cardBg;ctx.fill();return;}
   let a=-Math.PI/2;entries.forEach(e=>{const sl=(e.amt/tot)*Math.PI*2;ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,a,a+sl);ctx.closePath();ctx.fillStyle=e.color;ctx.fill();a+=sl;});
-  ctx.beginPath();ctx.arc(cx,cy,ir,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+  ctx.beginPath();ctx.arc(cx,cy,ir,0,Math.PI*2);ctx.fillStyle=cardBg;ctx.fill();
 }
 
 // RENDER ALL
@@ -916,13 +940,35 @@ function renderIngresos(){
   $('incomeMonthLabel').textContent=monthLabel();
   $('incomeTotalBig').textContent=fmt(total);
   $('incomeSubLabel').textContent=entries.length?`${entries.length} ingreso${entries.length>1?'s':''} registrado${entries.length>1?'s':''}`:'Sin ingresos registrados este mes';
-  $('incomeList').innerHTML=entries.length?entries.map(i=>`
-    <div class="inc-row" onclick="openIncomeDetail(${i.id})">
-      <div class="exp-icon" style="background:#D8F3DC;font-size:20px">💚</div>
-      <div class="exp-info"><div class="exp-name">${i.desc}</div><div class="exp-cat">${i.date||''}</div></div>
+  // Donut por tipo
+  const typeTotals={};
+  entries.forEach(e=>{const t=e.type||'variable';typeTotals[t]=(typeTotals[t]||0)+Number(e.amt);});
+  const donutEntries=INCOME_TYPES.map(t=>({...t,amt:typeTotals[t.id]||0})).filter(t=>t.amt>0).sort((a,b)=>b.amt-a.amt);
+  const donutTotal=donutEntries.reduce((s,e)=>s+e.amt,0);
+  const dc=$('incomeDonutCard');
+  if(dc){
+    dc.style.display=donutEntries.length?'':'none';
+    if(donutEntries.length){
+      drawD('incomeDonut',isMob()?160:180,donutEntries,donutTotal);
+      $('incomeDonutTotal').textContent=fmt(donutTotal);
+      $('incomeDonutLegend').innerHTML=donutEntries.map(t=>`
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0">
+          <div style="width:9px;height:9px;border-radius:2px;background:${t.color};flex-shrink:0"></div>
+          <span style="flex:1;color:var(--text2)">${t.icon} ${t.label}</span>
+          <span style="font-weight:600;color:var(--text)">${fmt(t.amt)}</span>
+          <span style="font-size:10px;color:var(--text3);min-width:32px;text-align:right">${donutTotal?((t.amt/donutTotal)*100).toFixed(0):0}%</span>
+        </div>`).join('');
+    }
+  }
+  $('incomeList').innerHTML=entries.length?entries.map(i=>{
+    const t=getIncomeType(i.type);
+    return `<div class="inc-row" onclick="openIncomeDetail(${i.id})">
+      <div class="exp-icon" style="background:${t.color}22;font-size:20px">${t.icon}</div>
+      <div class="exp-info"><div class="exp-name">${i.desc}</div><div class="exp-cat">${t.label} · ${i.date||''}</div></div>
       <div class="exp-right"><div class="exp-amt income">${fmt(i.amt)}</div></div>
-    </div>`).join(''):
-    `<div class="empty-state"><div class="empty-icon">💚</div><div class="empty-text">Sin ingresos este mes.<br>Tocá 💚 para agregar uno.</div></div>`;
+    </div>`;
+  }).join(''):
+    `<div class="empty-state"><div class="empty-icon">💰</div><div class="empty-text">Sin ingresos este mes.<br>Tocá 💰 para agregar uno.</div></div>`;
 }
 
 function renderCategorias(){
@@ -1102,6 +1148,11 @@ function openEditFromDetail(){
 }
 
 // MODAL INGRESO
+function renderIncomeTypeSelect(){
+  $('incomeTypeSelect').innerHTML=INCOME_TYPES.map(t=>`<button onclick="selectIncomeType('${t.id}')" style="padding:6px 12px;border-radius:99px;border:1.5px solid ${selectedIncomeType===t.id?t.color:'var(--border)'};background:${selectedIncomeType===t.id?t.color+'22':'var(--bg)'};color:${selectedIncomeType===t.id?t.color:'var(--text2)'};font-size:12px;font-weight:${selectedIncomeType===t.id?600:400};font-family:inherit;cursor:pointer;">${t.icon} ${t.label}</button>`).join('');
+}
+function selectIncomeType(id){selectedIncomeType=id;renderIncomeTypeSelect();}
+
 function openIncomeEntryModal(id){
   editingIncomeId=id||null;
   const entry=id?monthIncEntries().find(x=>x.id===id):null;
@@ -1110,6 +1161,8 @@ function openIncomeEntryModal(id){
   $('incomeAmt').value=entry?entry.amt:'';
   $('incomeDesc').value=entry?entry.desc:'';
   $('incomeDate').value=entry?entry.date:new Date().toISOString().split('T')[0];
+  selectedIncomeType=entry?(entry.type||'variable'):'variable';
+  renderIncomeTypeSelect();
   $('modalIncome').classList.add('open');
 }
 function closeIncomeModal(){$('modalIncome').classList.remove('open');editingIncomeId=null;}
@@ -1120,9 +1173,9 @@ function saveIncomeEntry(){
   if(!state.incomeEntries[month])state.incomeEntries[month]=[];
   if(editingIncomeId!==null){
     const idx=state.incomeEntries[month].findIndex(x=>x.id===editingIncomeId);
-    if(idx>=0)state.incomeEntries[month][idx]={id:editingIncomeId,desc,amt,date};
+    if(idx>=0)state.incomeEntries[month][idx]={id:editingIncomeId,desc,amt,date,type:selectedIncomeType};
   } else {
-    state.incomeEntries[month].push({id:state.nextId++,desc,amt,date});
+    state.incomeEntries[month].push({id:state.nextId++,desc,amt,date,type:selectedIncomeType});
   }
   save();closeIncomeModal();renderAll();
 }
@@ -1131,7 +1184,8 @@ function saveIncomeEntry(){
 function openIncomeDetail(id){
   incomeDetailId=id;
   const e=monthIncEntries().find(x=>x.id===id);if(!e)return;
-  $('incDetailDesc').textContent=e.desc;$('incDetailDate').textContent=e.date||'';$('incDetailAmt').textContent=fmt(e.amt);
+  const t=getIncomeType(e.type);
+  $('incDetailDesc').textContent=e.desc;$('incDetailDate').textContent=`${t.icon} ${t.label} · ${e.date||''}`;$('incDetailAmt').textContent=fmt(e.amt);
   $('modalIncomeDetail').classList.add('open');
 }
 function closeIncomeDetail(){$('modalIncomeDetail').classList.remove('open');incomeDetailId=null;}
