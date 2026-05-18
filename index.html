@@ -28,6 +28,36 @@
   --grad:linear-gradient(135deg,#5B21B6,#9333EA,#C026D3);
   --green:#2D6A4F;--green-bg:#D8F3DC;--green-border:#95D5B2;
 }
+body.dark{
+  --bg:#0F0A1A;--bg2:#1A1228;--card:#1E1528;
+  --text:#FAF7FF;--text2:#B09EC0;--text3:#7C6A92;
+  --accent:#C084FC;--border:#2D2240;
+  --shadow:0 2px 20px rgba(0,0,0,0.4);
+  --shadow-lg:0 8px 40px rgba(0,0,0,0.6);
+}
+body.dark .alert-green{background:#2D1B47;color:#E9D5FF;border-color:#7C3AED;}
+body.dark .alert-red{background:#3D1928;color:#F9A8D4;border-color:#BE185D;}
+body.dark .alert-amber{background:#3D2A0F;color:#FFD08A;border-color:#7A4F00;}
+body.dark .status-btn{background:var(--bg2);color:var(--text2);border-color:var(--border);}
+body.dark .status-btn.selected.paid{background:#3D2E5C;color:#C4B5FD;border-color:#7C3AED;}
+body.dark .status-btn.selected.pending{background:#352848;color:#C084FC;border-color:#9B5FCC;}
+body.dark .exp-amt.paid{color:#C4B5FD;}
+body.dark .exp-amt.income{color:#86EFAC;}
+body.dark .exp-status.done{color:#C4B5FD;}
+body.dark .exp-status.pending{color:#C084FC;}
+body.dark .metric-val.green{color:#C4B5FD;}
+body.dark .metric-val.red{color:#F9A8D4;}
+body.dark .metric-val.amber{color:#C084FC;}
+body.dark .metric-val.emerald{color:#86EFAC;}
+body.dark .filter-btn{background:var(--bg2);color:var(--text2);}
+body.dark .filter-btn.active{background:#3D2E5C;color:#C4B5FD;border-color:#7C3AED;}
+body.dark .btn-sm{background:var(--bg2);color:var(--text2);}
+body.dark .btn-secondary{background:var(--bg2);color:var(--text);}
+body.dark .scan-area{background:var(--bg2);}
+body.dark .scan-result{background:#2D1B47;color:#C4B5FD;border-color:#7C3AED;}
+body.dark .income-summary-card{background:linear-gradient(135deg,#0D2418,#1B4332);}
+body.dark .btn-delete{background:#3D1928!important;color:#F9A8D4!important;}
+body.dark .form-input::-webkit-calendar-picker-indicator{filter:invert(1);}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
 ::-webkit-scrollbar{width:6px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px;}
@@ -429,6 +459,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
           <div class="card-title">📅 Mes activo</div>
           <input class="form-input" type="month" id="activeMonth" onchange="changeMonth()">
         </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-title">🎨 Apariencia</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0">
+            <span style="font-size:13px;color:var(--text2)">🌙 Modo oscuro</span>
+            <button class="toggle" id="toggleDark" onclick="toggleDark()"></button>
+          </div>
+        </div>
       </div>
       <div class="card" style="padding:0">
         <div class="card-header">
@@ -468,7 +505,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="mn-item" onclick="showScreen('config',this,'m')"><div class="mn-icon">⚙️</div><span>Config</span></div>
 </nav>
 <button class="mobile-fab" onclick="openModal()" title="Nuevo gasto">💸</button>
-<button class="mobile-fab-inc" onclick="openIncomeEntryModal()" title="Nuevo ingreso">💚</button>
+<button class="mobile-fab-inc" onclick="openIncomeEntryModal()" title="Nuevo ingreso">💰</button>
 
 <!-- MODAL GASTO -->
 <div class="modal-overlay" id="modalAdd">
@@ -906,6 +943,7 @@ function renderCategorias(){
 
 function renderConfig(){
   $('activeMonth').value=state.activeMonth;
+  const td=$('toggleDark');if(td)td.classList.toggle('on',!!state.darkMode);
   $('catManageList').innerHTML=state.categories.length?state.categories.map(c=>`
     <div class="manage-row">
       <div class="manage-icon" style="background:${c.color}22">${c.icon}</div>
@@ -937,6 +975,16 @@ function showScreen(id,el,type){
   renderAll();window.scrollTo(0,0);
 }
 function setFilter(f){activeFilter=f;renderGastos();}
+function toggleDark(){
+  state.darkMode=!state.darkMode;
+  applyDarkMode();
+  save();
+}
+function applyDarkMode(){
+  document.body.classList.toggle('dark',!!state.darkMode);
+  const t=$('toggleDark');if(t)t.classList.toggle('on',!!state.darkMode);
+}
+
 function changeMonth(){
   state.activeMonth=$('activeMonth').value;save();
   const n=autoGenerateCuotas();
@@ -1123,6 +1171,7 @@ async function handleScan(input){
 
 // AUTH & INIT
 function mostrarApp(){
+  applyDarkMode();
   $('appLoading').classList.add('hidden');
   $('loginScreen').classList.add('hidden');
   if(!state.done){$('onboarding').classList.remove('hidden');}
