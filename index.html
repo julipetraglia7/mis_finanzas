@@ -409,6 +409,14 @@ body.dark .form-error{color:#F9A8D4;}
   <div id="screen-home" class="screen active">
     <div class="metric-grid" id="metricGrid"></div>
     <div id="alertHome" style="margin-top:12px"></div>
+    <div class="section-title flush" style="margin-top:8px">Últimos 6 meses</div>
+    <div class="card" style="padding:16px">
+      <canvas id="trendChart" style="width:100%;height:180px;display:block;"></canvas>
+      <div style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--text3);">
+        <span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:8px;background:#7C3AED;border-radius:2px;display:inline-block;"></span>Gastos</span>
+        <span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:8px;background:#2D6A4F;border-radius:2px;display:inline-block;"></span>Ingresos</span>
+      </div>
+    </div>
     <div class="two-col" style="margin-top:16px">
       <div>
         <div class="section-title flush">Últimos gastos</div>
@@ -530,6 +538,11 @@ body.dark .form-error{color:#F9A8D4;}
         <div class="card-title">👤 Mi cuenta</div>
         <div id="accountInfo" style="font-size:13px;color:var(--text2);margin-bottom:14px">—</div>
         <button id="btnLogoutConfig" onclick="signOut()" style="display:none" class="btn-secondary">Cerrar sesión</button>
+        <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+          <div class="card-title" style="margin-bottom:10px;padding:0">📤 Exportar datos</div>
+          <button class="btn-secondary" onclick="exportCSV('mes')">Exportar mes actual (CSV)</button>
+          <button class="btn-secondary" onclick="exportCSV('todo')" style="margin-top:6px">Exportar todo el historial (CSV)</button>
+        </div>
         <div id="localModeNotice" style="display:none;font-size:12px;color:var(--text3);background:var(--bg2);border-radius:10px;padding:10px 12px;">
           Estás usando la app en modo local (sin sincronización). Los datos solo se guardan en este dispositivo.
           <br><br>Configurá Firebase para activar la sincronización entre dispositivos.
@@ -564,6 +577,7 @@ body.dark .form-error{color:#F9A8D4;}
     </div>
     <div class="form-group"><label class="form-label" id="lblAmt">Monto ($)</label><input class="form-input big" type="number" id="inputAmt" placeholder="0" inputmode="decimal" oninput="updateAmtPreview()"><div class="form-error" id="inputAmtError"></div><div id="amtConvert" style="font-size:11px;color:var(--text3);margin-top:4px;display:none"></div></div>
     <div class="form-group"><label class="form-label">Descripción</label><input class="form-input" type="text" id="inputDesc" placeholder="Ej: Supermercado Carrefour"><div class="form-error" id="inputDescError"></div></div>
+    <div class="form-group"><label class="form-label">Notas (opcional)</label><input class="form-input" type="text" id="inputNotes" placeholder="Ej: cena de trabajo, regalo cumpleaños..."></div>
     <div class="form-group"><label class="form-label">Fecha</label><input class="form-input" type="date" id="inputDate"></div>
     <div class="form-group">
       <label class="form-label">Medio de pago</label>
@@ -622,6 +636,10 @@ body.dark .form-error{color:#F9A8D4;}
       <div id="detailMedioWrap" style="margin-top:8px;display:none">
         <div class="detail-info-label">Medio de pago</div>
         <div class="medio-tag" id="detailMedio"></div>
+      </div>
+      <div id="detailNotesWrap" style="margin-top:12px;display:none">
+        <div class="detail-info-label">Notas</div>
+        <div style="font-size:13px;color:var(--text);margin-top:4px" id="detailNotes"></div>
       </div>
       <div id="detailCuotaInfo" style="margin-top:12px;display:none">
         <div class="detail-info-label" style="margin-bottom:6px">Progreso de cuotas</div>
@@ -794,6 +812,7 @@ function migrateData(p){
 }
 
 function save(){
+  state.lastModified=Date.now();
   try{localStorage.setItem(SK,JSON.stringify(state));}catch(e){}
   if(modoLocal||!currentUser||!fbDb||isSaving)return;
   isSaving=true;
@@ -815,9 +834,9 @@ async function loadFromCloud(){
       const data=snap.val();
       if(data){
         const p=migrateData(data);
-        // Si hay datos locales más nuevos (ej: primera vez), subir los locales
+        // Comparar por timestamp: el más reciente gana (más confiable que contar gastos)
         const local=(() => {try{const r=localStorage.getItem(SK);return r?JSON.parse(r):null;}catch(e){return null;}})();
-        if(local&&(local.expenses||[]).length>(p.expenses||[]).length){
+        if(local&&(local.lastModified||0)>(p.lastModified||0)){
           state={...state,...local};
         } else {
           state={...state,...p};
@@ -999,6 +1018,62 @@ function autoGenerateCuotas(){
   return count;
 }
 
+// TREND CHART (últimos 6 meses)
+function renderTrendChart(){
+  const canvas=$('trendChart');if(!canvas)return;
+  const months=[];let m=state.activeMonth;
+  for(let i=0;i<6;i++){months.unshift(m);m=prevMonthStr(m);}
+  const gastos=months.map(mo=>state.expenses.filter(e=>(e.date||'').startsWith(mo)).reduce((s,e)=>s+toArs(e),0));
+  const ingresos=months.map(mo=>(state.incomeEntries[mo]||[]).reduce((s,i)=>s+Number(i.amt),0));
+  const labels=months.map(mo=>{const[y,mm]=mo.split('-');return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(mm)-1]+"'"+y.slice(2);});
+  const dpr=window.devicePixelRatio||1;
+  const rect=canvas.getBoundingClientRect();
+  const w=rect.width||300,h=rect.height||180;
+  canvas.width=w*dpr;canvas.height=h*dpr;
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);
+  const cs=getComputedStyle(document.body);
+  const borderC=cs.getPropertyValue('--border').trim()||'#eee';
+  const text3C=cs.getPropertyValue('--text3').trim()||'#999';
+  const padL=44,padR=8,padT=8,padB=24;
+  const chartW=w-padL-padR,chartH=h-padT-padB;
+  const maxVal=Math.max(...gastos,...ingresos,1);
+  // Redondear hacia arriba para escala bonita
+  const mag=Math.pow(10,Math.floor(Math.log10(maxVal)));
+  const niceMax=Math.ceil(maxVal/mag)*mag;
+  ctx.font='10px DM Sans,sans-serif';
+  ctx.fillStyle=text3C;ctx.strokeStyle=borderC;ctx.lineWidth=1;
+  // Grid + Y labels (4 niveles)
+  for(let i=0;i<=4;i++){
+    const y=padT+chartH*(1-i/4);
+    ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(padL+chartW,y);ctx.stroke();
+    const val=niceMax*i/4;
+    const lbl=val>=1000000?(val/1000000).toFixed(1)+'M':val>=1000?Math.round(val/1000)+'k':Math.round(val);
+    ctx.textAlign='right';ctx.fillText(lbl,padL-4,y+3);
+  }
+  // Barras agrupadas
+  const groupW=chartW/months.length;
+  const barW=Math.max(6,(groupW*0.32));
+  gastos.forEach((val,i)=>{
+    const x=padL+groupW*i+(groupW/2)-barW-1;
+    const barH=(val/niceMax)*chartH;
+    ctx.fillStyle='#7C3AED';
+    ctx.fillRect(x,padT+chartH-barH,barW,barH);
+  });
+  ingresos.forEach((val,i)=>{
+    const x=padL+groupW*i+(groupW/2)+1;
+    const barH=(val/niceMax)*chartH;
+    ctx.fillStyle='#2D6A4F';
+    ctx.fillRect(x,padT+chartH-barH,barW,barH);
+  });
+  // X labels
+  ctx.fillStyle=text3C;ctx.textAlign='center';
+  labels.forEach((lbl,i)=>{
+    const x=padL+groupW*i+groupW/2;
+    ctx.fillText(lbl,x,padT+chartH+14);
+  });
+}
+
 // DONUT
 function drawD(id,sz,entries,tot){
   const c=$(id);if(!c)return;c.width=sz;c.height=sz;
@@ -1062,6 +1137,8 @@ function renderHome(){
     alertsHtml+=`<div class="alert-box alert-amber" style="margin-top:10px"><strong>⚠️ Cerca del límite (80%+)</strong>${list}</div>`;
   }
   ah.innerHTML=alertsHtml;
+
+  renderTrendChart();
 
   const recent=[...monthExps()].sort((a,b)=>b.id-a.id).slice(0,6);
   $('recentList').innerHTML=recent.length?recent.map(expRow).join(''):
@@ -1357,7 +1434,7 @@ function openModal(){
   editingId=null;cuotasMode=false;recurringMode=false;
   $('toggleRecurring').classList.remove('on');
   $('modalTitle').textContent='Nuevo gasto';$('btnSave').textContent='Guardar gasto';
-  $('inputAmt').value='';$('inputDesc').value='';
+  $('inputAmt').value='';$('inputDesc').value='';$('inputNotes').value='';
   $('inputDate').value=new Date().toISOString().split('T')[0];
   $('inputCuotaActual').value='';$('inputCuotaTotal').value='';$('inputCuotaMonto').value='';
   $('cuotasFields').style.display='none';$('toggleCuotas').classList.remove('on');
@@ -1414,6 +1491,35 @@ function updateAmtPreview(){
   if(selectedCurrency==='USD'&&v>0){c.style.display='block';c.textContent=`≈ ${fmt(v*(state.usdRate||1000))} ARS (cotización ${fmt(state.usdRate||1000)})`;}
   else c.style.display='none';
 }
+function exportCSV(scope){
+  const exps=scope==='mes'?monthExps():state.expenses;
+  const headers=['Fecha','Descripción','Categoría','Medio de pago','Moneda','Monto','Monto ARS','Estado','Recurrente','Cuota','Notas'];
+  const rows=exps.map(e=>{
+    const cat=getCat(e.cat),medio=getMedio(e.medio);
+    return [
+      e.date||'',
+      `"${(e.desc||'').replace(/"/g,'""')}"`,
+      `"${cat.label}"`,
+      medio?`"${medio.label}"`:'',
+      e.currency||'ARS',
+      e.amt,
+      Math.round(toArs(e)),
+      e.paid?'Pagado':'Pendiente',
+      e.recurring?'Sí':'No',
+      e.cuota?`${e.cuota.actual}/${e.cuota.total}`:'',
+      `"${(e.notes||'').replace(/"/g,'""')}"`
+    ].join(',');
+  });
+  const csv=[headers.join(','),...rows].join('\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`finanzas_${scope==='mes'?state.activeMonth:'historial'}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function changeUsdRate(){
   const v=parseFloat($('usdRateInput').value);
   if(v>0){state.usdRate=v;save();renderAll();}
@@ -1437,6 +1543,7 @@ async function fetchUsdRate(){
 function saveExpense(){
   clearFieldErrors();
   const amt=parseFloat($('inputAmt').value),desc=$('inputDesc').value.trim();
+  const notes=$('inputNotes').value.trim()||null;
   const date=$('inputDate').value||new Date().toISOString().split('T')[0];
   let hasErr=false;
   if(!amt){showFieldError('inputAmt','Ingresá un monto válido');hasErr=true;}
@@ -1448,7 +1555,7 @@ function saveExpense(){
     const e=state.expenses.find(x=>x.id===editingId);
     if(e){
       e.amt=amt;e.desc=desc;e.date=date;e.cat=selectedCatId;e.medio=selectedMedioId;
-      e.paid=selectedStatus==='paid';e.cuota=cuota;e.currency=selectedCurrency;delete e.mode;
+      e.paid=selectedStatus==='paid';e.cuota=cuota;e.currency=selectedCurrency;e.notes=notes;delete e.mode;
       e.recurring=recurringMode;
       if(recurringMode&&!e.recurringOrigin)e.recurringOrigin=e.id;
       if(!recurringMode)delete e.recurringOrigin;
@@ -1461,7 +1568,7 @@ function saveExpense(){
     else{alert('No se encontró el gasto a editar. Cerrá y volvé a abrir.');return;}
   } else {
     const newId=state.nextId++;
-    state.expenses.push({id:newId,desc,amt,cat:selectedCatId,medio:selectedMedioId,paid:selectedStatus==='paid',date,cuota,currency:selectedCurrency,recurring:recurringMode,...(recurringMode?{recurringOrigin:newId}:{})});
+    state.expenses.push({id:newId,desc,amt,cat:selectedCatId,medio:selectedMedioId,paid:selectedStatus==='paid',date,cuota,currency:selectedCurrency,notes,recurring:recurringMode,...(recurringMode?{recurringOrigin:newId}:{})});
   }
   save();closeModal();renderAll();
 }
@@ -1482,6 +1589,7 @@ function openDetail(id){
   if(e.cuota){ci.style.display='block';$('detailCuotaProg').style.width=Math.round((e.cuota.actual/e.cuota.total)*100)+'%';$('detailCuotaLabel').textContent=`Cuota ${e.cuota.actual} de ${e.cuota.total} · ${fmt(e.cuota.monto||e.amt)}/cuota`;}
   else ci.style.display='none';
   $('btnCancelRecurring').style.display=e.recurring?'block':'none';
+  const nw=$('detailNotesWrap');if(nw){if(e.notes){nw.style.display='block';$('detailNotes').textContent=e.notes;}else nw.style.display='none';}
   $('modalDetail').classList.add('open');
 }
 
@@ -1500,7 +1608,7 @@ function deleteExpense(){if(!confirm('¿Eliminar este gasto?'))return;state.expe
 function openEditFromDetail(){
   const e=state.expenses.find(x=>x.id===detailId);if(!e)return;closeDetail();
   editingId=e.id;selectedCatId=e.cat;selectedMedioId=e.medio??null;selectedStatus=e.paid?'paid':'pending';selectedCurrency=e.currency||'ARS';
-  $('inputAmt').value=e.amt;$('inputDesc').value=e.desc;
+  $('inputAmt').value=e.amt;$('inputDesc').value=e.desc;$('inputNotes').value=e.notes||'';
   $('inputDate').value=e.date||new Date().toISOString().split('T')[0];
   $('modalTitle').textContent='Editar gasto';$('btnSave').textContent='Guardar cambios';
   cuotasMode=!!e.cuota;$('toggleCuotas').classList.toggle('on',cuotasMode);$('cuotasFields').style.display=cuotasMode?'block':'none';
