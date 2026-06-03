@@ -811,15 +811,29 @@ function migrateData(p){
   return p;
 }
 
+let saveTimer=null,pendingCloudSave=false;
 function save(){
   state.lastModified=Date.now();
   try{localStorage.setItem(SK,JSON.stringify(state));}catch(e){}
-  if(modoLocal||!currentUser||!fbDb||isSaving)return;
+  if(modoLocal||!currentUser||!fbDb)return;
+  pendingCloudSave=true;
+  if(saveTimer)clearTimeout(saveTimer);
+  saveTimer=setTimeout(flushCloudSave,500);
+}
+function flushCloudSave(){
+  if(saveTimer){clearTimeout(saveTimer);saveTimer=null;}
+  if(!pendingCloudSave)return;
+  if(modoLocal||!currentUser||!fbDb)return;
+  pendingCloudSave=false;
   isSaving=true;
   fbDb.ref('users/'+currentUser.uid).set(state)
     .catch(e=>console.error('Error guardando en la nube:',e))
     .finally(()=>{isSaving=false;});
 }
+// Flush al cerrar/ocultar la app para no perder cambios pendientes
+document.addEventListener('visibilitychange',()=>{if(document.hidden)flushCloudSave();});
+window.addEventListener('beforeunload',()=>{flushCloudSave();});
+window.addEventListener('pagehide',()=>{flushCloudSave();});
 
 function loadLocal(){
   try{
