@@ -1540,15 +1540,15 @@ function changeUsdRate(){
 }
 async function fetchUsdRate(){
   try{
-    const res=await fetch('https://api.bluelytics.com.ar/v2/latest');
+    const res=await fetch('https://dolarapi.com/v1/dolares/tarjeta');
     if(!res.ok)return;
     const data=await res.json();
-    const rate=Math.round((data.blue.value_buy+data.blue.value_sell)/2);
+    const rate=Math.round(data.venta);
     if(rate&&rate>0){
       state.usdRate=rate;
       save();
       const input=$('usdRateInput');if(input)input.value=rate;
-      const lbl=$('usdRateLabel');if(lbl)lbl.textContent=`Actualizado automáticamente · $${rate.toLocaleString('es-AR')} (dólar blue)`;
+      const lbl=$('usdRateLabel');if(lbl)lbl.textContent=`Actualizado automáticamente · $${rate.toLocaleString('es-AR')} (dólar tarjeta)`;
       renderAll();
     }
   }catch(e){console.log('No se pudo obtener cotización automática, usando valor manual');}
