@@ -797,7 +797,7 @@ let state={
   budgets:{}
 };
 
-const COLORS=['#A94ACE','#C490D1','#A775C9','#9381FF','#7D8CC4','#534BA8','#B8B8FF','#DA7DBE','#D480BB','#DEAFC2','#B8336A','#F4A4F5','#41898B','#ADBBA0','#FFD8BE'];
+const COLORS=['#A94ACE','#A775C9','#C490D1','#9381FF','#B8B8FF','#534BA8','#7D8CC4','#DA7DBE','#D480BB','#DEAFC2','#F4A4F5','#B8336A','#7B47A0','#6957E8','#DA7DBE'];
 const EMOJIS=['💳','🏠','⛽','🛡️','📺','📚','🖨️','⚡','🏢','📦','🛒','💊','🐾','🍔','✈️','🎮','👗','💄','🏋️','🎵','🎬','🍷','☕','🚗','🚌','💰','🏦','📱','💻','🔧'];
 const MEDIO_EMOJIS=['💳','🏦','💵','🔵','🟣','🟢','⚡','🌐','📲','💸'];
 const INCOME_TYPES=[
@@ -917,21 +917,26 @@ function medioT(){const m={};monthExps().forEach(e=>{if(e.medio)m[e.medio]=(m[e.
 function monthLabel(){const[y,mo]=state.activeMonth.split('-');return['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][parseInt(mo)-1]+' '+y;}
 function prevMonthStr(m){const[y,mo]=m.split('-').map(Number);return mo===1?`${y-1}-12`:`${y}-${String(mo-1).padStart(2,'0')}`;}
 
-// MIGRACIÓN DE COLORES DE CATEGORÍAS (vibrantes → pastel)
+// MIGRACIÓN DE COLORES DE CATEGORÍAS (vibrantes → pastel cohesivo con tema Amatista)
 function migrateCategoryColors(){
-  if(state.categoryColorsMigrated)return;
+  if(state.categoryColorsMigratedV2)return;
   const map={
+    // Vibrantes originales → pastel
     '#8B5CF6':'#A775C9','#C084FC':'#C490D1','#A855F7':'#A94ACE','#E879F9':'#F4A4F5',
     '#F472B6':'#DA7DBE','#7C3AED':'#9381FF','#D946EF':'#A775C9','#BE185D':'#B8336A',
-    '#9CA3AF':'#ADBBA0','#A78BFA':'#B8B8FF','#60A5FA':'#7D8CC4','#34D399':'#41898B',
-    '#FBBF24':'#FFD8BE','#F87171':'#DA7DBE','#FB923C':'#FFD8BE'
+    '#9CA3AF':'#B8B8FF','#A78BFA':'#B8B8FF','#60A5FA':'#7D8CC4','#34D399':'#A775C9',
+    '#FBBF24':'#DEAFC2','#F87171':'#DA7DBE','#FB923C':'#C490D1',
+    // Re-migrar v1 (los que quedaron fuera de tono con Amatista)
+    '#ADBBA0':'#B8B8FF',  // Ash Grey → Periwinkle
+    '#FFD8BE':'#DEAFC2',  // Peach Fuzz → Soft Blossom
+    '#41898B':'#534BA8'   // Dark Cyan → Ocean Twilight
   };
   let changed=false;
   (state.categories||[]).forEach(c=>{
     const up=(c.color||'').toUpperCase();
     if(map[up]){c.color=map[up];changed=true;}
   });
-  state.categoryColorsMigrated=true;
+  state.categoryColorsMigratedV2=true;
   if(changed)save();
   else{try{localStorage.setItem(SK,JSON.stringify(state));}catch(e){}}
 }
@@ -1311,24 +1316,24 @@ function renderCategorias(){
   const budgets=state.budgets||{};
   $('catList').innerHTML=entries.length?entries.map(e=>{
     const budget=budgets[e.id];
+    const pct=tot?((e.amt/tot)*100).toFixed(1):0;
+    const fillW=Math.round((e.amt/mx)*100);
     let budgetHtml='';
     if(budget&&budget>0){
       const pctUsed=Math.round((e.amt/budget)*100);
-      const color=pctUsed>100?'#BE185D':pctUsed>=80?'#C2410C':'#41898B';
+      const bColor=pctUsed>100?'#BE185D':pctUsed>=80?'#C2410C':e.color;
       const lbl=pctUsed>100?`Excedido ${fmt(e.amt-budget)}`:`Te queda ${fmt(budget-e.amt)}`;
-      budgetHtml=`<div style="padding:6px 16px 12px;font-size:11px;">
-        <div style="display:flex;justify-content:space-between;color:var(--text2);margin-bottom:3px"><span>Presupuesto ${fmt(budget)}</span><span style="color:${color};font-weight:600">${pctUsed}% · ${lbl}</span></div>
-        <div class="comp-bar-bg"><div class="comp-bar-fill" style="width:${Math.min(100,pctUsed)}%;background:${color}"></div></div>
-      </div>`;
+      budgetHtml=`<div style="display:flex;justify-content:space-between;font-size:11px;margin-top:6px"><span style="color:var(--text2)">Presupuesto ${fmt(budget)}</span><span style="color:${bColor};font-weight:600">${pctUsed}% · ${lbl}</span></div><div class="comp-bar-bg" style="margin-top:4px"><div class="comp-bar-fill" style="width:${Math.min(100,pctUsed)}%;background:${bColor}"></div></div>`;
     }
-    return `<div style="border-bottom:1px solid var(--border)">
-      <div class="cat-row" style="border-bottom:none">
-        <div class="cat-dot" style="background:${e.color}"></div>
-        <div class="cat-name">${e.icon} ${e.label}</div>
-        <div class="cat-bar-wrap"><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${Math.round((e.amt/mx)*100)}%;background:${e.color}"></div></div></div>
-        <div class="cat-amt">${fmt(e.amt)}</div>
-        <div class="cat-pct">${tot?((e.amt/tot)*100).toFixed(1):0}%</div>
+    return `<div class="comp-row" style="border-left:3px solid ${e.color}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <span style="font-size:13px;color:var(--text);font-weight:600">${e.icon} ${e.label}</span>
+        <span style="font-size:12px;color:${e.color};font-weight:700">${pct}%</span>
       </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-top:3px">
+        <span style="font-weight:600;color:var(--text)">${fmt(e.amt)}</span>
+      </div>
+      <div class="comp-bar-bg" style="margin-top:6px"><div class="comp-bar-fill" style="width:${fillW}%;background:${e.color}"></div></div>
       ${budgetHtml}
     </div>`;
   }).join(''):
